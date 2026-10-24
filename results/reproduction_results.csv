@@ -1,0 +1,10 @@
+run_id,timestamp_utc,model,target,target_name,units,procedure,n_train,n_evaluation,mae,ci_lower,ci_upper,alpha,solver
+20261024T131741238732Z_papagei_s_diasbp,2026-10-24T13:17:45.473204+00:00,papagei_s,diasbp,Diastolic BP,mmHg,released_notebook_val_plus_test,123,82,8.909545944958198,7.502199257873908,10.31505160448028,1000.0,auto
+20261024T131741238732Z_papagei_s_sysbp,2026-10-24T13:17:45.797527+00:00,papagei_s,sysbp,Systolic BP,mmHg,released_notebook_val_plus_test,123,82,14.25353296791635,11.895499434122225,16.6615087555676,1000.0,auto
+20261024T131741238732Z_papagei_s_hr,2026-10-24T13:17:46.096155+00:00,papagei_s,hr,Heart rate,beats/min,released_notebook_val_plus_test,123,82,4.535240545505431,3.7855304962251246,5.332526253490912,100.0,sparse_cg
+20261024T131741238732Z_papagei_s_svri_diasbp,2026-10-24T13:17:46.350919+00:00,papagei_s_svri,diasbp,Diastolic BP,mmHg,released_notebook_val_plus_test,123,82,9.245227767200005,7.862825172703441,10.641828867284264,1000.0,sparse_cg
+20261024T131741238732Z_papagei_s_svri_sysbp,2026-10-24T13:17:46.613336+00:00,papagei_s_svri,sysbp,Systolic BP,mmHg,released_notebook_val_plus_test,123,82,14.218725530112662,11.921321582794189,16.62777661579411,1000.0,sparse_cg
+20261024T131741238732Z_papagei_s_svri_hr,2026-10-24T13:17:46.888586+00:00,papagei_s_svri,hr,Heart rate,beats/min,released_notebook_val_plus_test,123,82,4.822339825513886,3.975410647508575,5.619781904685787,100.0,sparse_cg
+20261024T131741238732Z_papagei_p_diasbp,2026-10-24T13:17:47.169262+00:00,papagei_p,diasbp,Diastolic BP,mmHg,released_notebook_val_plus_test,123,82,8.882039512076028,7.560469883244212,10.307639112705136,1000.0,auto
+20261024T131741238732Z_papagei_p_sysbp,2026-10-24T13:17:47.437108+00:00,papagei_p,sysbp,Systolic BP,mmHg,released_notebook_val_plus_test,123,82,14.30742952300281,11.881550916811316,16.560147080770353,1000.0,auto
+20261024T131741238732Z_papagei_p_hr,2026-10-24T13:17:47.715443+00:00,papagei_p,hr,Heart rate,beats/min,released_notebook_val_plus_test,123,82,4.5845450889773485,3.7450601752211408,5.468312533308819,1000.0,sparse_cg

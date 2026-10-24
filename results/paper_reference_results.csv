@@ -1,0 +1,13 @@
+dataset,model,target,metric,units,paper_score,paper_ci_lower,paper_ci_upper,source,ci_status
+PPG-BP,papagei_p,sysbp,mae,mmHg,13.60,10.65,16.51,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_p,diasbp,mae,mmHg,8.88,7.33,10.76,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_p,hr,mae,beats/min,3.47,2.74,4.32,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_p,hypertension,auroc,unitless,0.74,0.55,0.90,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_s,sysbp,mae,mmHg,14.39,12.53,16.45,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_s,diasbp,mae,mmHg,8.71,7.18,10.01,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_s,hr,mae,beats/min,4.00,3.34,4.67,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_s,hypertension,auroc,unitless,0.77,0.68,0.87,User-provided paper-results screenshot,Supplied in screenshot
+PPG-BP,papagei_s_svri,sysbp,mae,mmHg,15.03,,,User-provided paper-results screenshot,Not supplied in screenshot
+PPG-BP,papagei_s_svri,diasbp,mae,mmHg,9.12,,,User-provided paper-results screenshot,Not supplied in screenshot
+PPG-BP,papagei_s_svri,hr,mae,beats/min,4.00,,,User-provided paper-results screenshot,Not supplied in screenshot
+PPG-BP,papagei_s_svri,hypertension,auroc,unitless,0.77,,,User-provided paper-results screenshot,Not supplied in screenshot

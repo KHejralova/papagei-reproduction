@@ -1,0 +1,3 @@
+model,procedure,n_train,n_evaluation,auroc,accuracy,f1,C,max_iter,penalty,solver,ci_lower,ci_upper,bootstrap_seed,bootstrap_samples
+papagei_s,released_205_valid_grid,123,82,0.7583333333333334,0.7317073170731707,0.8070175438596492,0.01,100,l2,lbfgs,0.6472278520193252,0.8607969576719577,42,500
+papagei_p,released_205_valid_grid,123,82,0.6384615384615385,0.6585365853658537,0.7358490566037735,0.1,100,l2,lbfgs,0.504796875,0.7660244854765729,42,500

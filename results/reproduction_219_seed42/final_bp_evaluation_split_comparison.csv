@@ -1,0 +1,13 @@
+model,target,evaluation,n_evaluation,mae
+papagei_p,diasbp,val,44,9.646222704545453
+papagei_p,diasbp,test,44,8.853189295454543
+papagei_p,diasbp,val_plus_test,88,9.249706
+papagei_p,sysbp,val,44,15.114604181818182
+papagei_p,sysbp,test,44,15.159107272727267
+papagei_p,sysbp,val_plus_test,88,15.13685572727273
+papagei_s,diasbp,val,44,9.023426068181818
+papagei_s,diasbp,test,44,9.061730477272727
+papagei_s,diasbp,val_plus_test,88,9.04257827272727
+papagei_s,sysbp,val,44,16.777648522727272
+papagei_s,sysbp,test,44,15.916899068181822
+papagei_s,sysbp,val_plus_test,88,16.347273795454544

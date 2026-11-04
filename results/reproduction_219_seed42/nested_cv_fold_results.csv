@@ -1,0 +1,17 @@
+model,target,outer_fold,n_fit,n_check,mae,alpha,solver
+papagei_s,sysbp,1,98,33,14.744602087772254,100.0,auto
+papagei_s,sysbp,2,98,33,16.301936756480824,100.0,auto
+papagei_s,sysbp,3,98,33,15.110634312485203,100.0,auto
+papagei_s,sysbp,4,99,32,12.890649795532227,100.0,sparse_cg
+papagei_s,diasbp,1,98,33,10.041573264382102,100.0,sparse_cg
+papagei_s,diasbp,2,98,33,10.436236526026871,100.0,auto
+papagei_s,diasbp,3,98,33,8.617544463186553,100.0,auto
+papagei_s,diasbp,4,99,32,8.645837664604187,100.0,auto
+papagei_p,sysbp,1,98,33,16.521294102524266,100.0,sparse_cg
+papagei_p,sysbp,2,98,33,18.466153000340316,100.0,auto
+papagei_p,sysbp,3,98,33,13.847899234656131,100.0,auto
+papagei_p,sysbp,4,99,32,19.278191804885864,100.0,auto
+papagei_p,diasbp,1,98,33,8.718977725867068,100.0,sparse_cg
+papagei_p,diasbp,2,98,33,9.668932712439334,100.0,sparse_cg
+papagei_p,diasbp,3,98,33,8.584496584805576,100.0,sparse_cg
+papagei_p,diasbp,4,99,32,12.400624513626099,100.0,auto

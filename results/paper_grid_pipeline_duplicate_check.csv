@@ -1,0 +1,9 @@
+model,target,evaluation,n_train,n_evaluation,mae,ci_lower,ci_upper,alpha,solver,procedure,bootstrap_seed,bootstrap_samples
+papagei_s,sysbp,val_plus_test,123,82,14.370852772782488,12.142048072814942,16.746343342850846,100.0,auto,paper_grid_scaling_inside_cv,42,500
+papagei_s,sysbp,val_plus_test_without_24,123,81,14.338233100043404,12.06257457262204,16.651802409136735,100.0,auto,paper_grid_scaling_inside_cv,42,500
+papagei_s,diasbp,val_plus_test,123,82,8.950001925956911,7.65680862170894,10.217933612916527,100.0,auto,paper_grid_scaling_inside_cv,42,500
+papagei_s,diasbp,val_plus_test_without_24,123,81,8.948109520806206,7.567403694435402,10.385748379318802,100.0,auto,paper_grid_scaling_inside_cv,42,500
+papagei_p,sysbp,val_plus_test,123,82,17.945954857802974,15.041426444635158,20.585558002751046,100.0,auto,paper_grid_scaling_inside_cv,42,500
+papagei_p,sysbp,val_plus_test_without_24,123,81,18.113597163447626,15.414194599198707,21.07987846798367,100.0,auto,paper_grid_scaling_inside_cv,42,500
+papagei_p,diasbp,val_plus_test,123,82,9.375145284140983,7.680754625506518,11.131278186891135,100.0,sparse_cg,paper_grid_scaling_inside_cv,42,500
+papagei_p,diasbp,val_plus_test_without_24,123,81,9.390012058210962,7.740774141711953,11.212031833036447,100.0,sparse_cg,paper_grid_scaling_inside_cv,42,500

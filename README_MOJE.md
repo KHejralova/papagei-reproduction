@@ -11,7 +11,7 @@ regression settings:
 - Performance reported using participant-level MAE.
 - 95% bootstrap confidence interval: 500 resamples, seed 42.
 
-Use the supplied participant splits:
+Use the supplied participant splits: --- i.e do it on the 205 (they left out 14 participants for some reason, every experiment with them included was bad, so 205 is the 'base' that i use as well)
 123 training, 41 validation and 41 test participants.
 Keep all recordings from each participant in the same split.
 

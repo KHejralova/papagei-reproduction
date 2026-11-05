@@ -1,0 +1,2 @@
+model,n_train,n_evaluation,auroc,auc_lower_ci,auc_upper_ci,accuracy,f1,f1_lower_ci,f1_upper_ci,cv_accuracy,max_depth,max_features,min_samples_leaf,min_samples_split,n_estimators
+random_forest_padded,123,82,0.6025641025641026,0.4645532518164097,0.7437392954319078,0.6707317073170732,0.765217391304348,0.654867256637168,0.8461538461538461,0.7247311827956989,30,log2,2,5,200

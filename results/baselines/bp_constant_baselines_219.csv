@@ -1,0 +1,5 @@
+setup,baseline,target,n_train,n_evaluation,constant_prediction,mae
+219_adapted,training_mean,sysbp,131,88,125.10687022900764,16.76951769604441
+219_adapted,training_median,sysbp,131,88,124.0,16.943181818181817
+219_adapted,training_mean,diasbp,131,88,71.12977099236642,8.54293893129771
+219_adapted,training_median,diasbp,131,88,70.0,8.602272727272727

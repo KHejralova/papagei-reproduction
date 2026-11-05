@@ -1,0 +1,2 @@
+model,n_train,n_evaluation,auroc,ci_lower,ci_upper,accuracy,f1,C,max_iter,penalty,solver
+moment,123,82,0.7064102564102565,0.5801013513513513,0.8294575825825825,0.6707317073170732,0.7378640776699028,0.1,100,l2,lbfgs

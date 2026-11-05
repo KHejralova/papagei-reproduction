@@ -1,0 +1,3 @@
+model,target,n_train,n_evaluation,mae,cv_mse,random_state,max_depth,max_features,min_samples_leaf,n_estimators
+random_forest_padded,sysbp,123,82,15.194036780208153,407.13979483118356,42,5,1.0,5,200
+random_forest_padded,diasbp,123,82,9.225001345640631,111.22034771706298,42,5,sqrt,3,100

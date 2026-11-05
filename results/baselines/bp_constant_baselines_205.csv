@@ -1,0 +1,5 @@
+setup,baseline,target,n_train,n_evaluation,constant_prediction,mae
+205_released,training_mean,sysbp,123,82,127.2520325203252,15.79902835613722
+205_released,training_median,sysbp,123,82,127.0,15.768292682926829
+205_released,training_mean,diasbp,123,82,71.89430894308943,9.372199087844537
+205_released,training_median,diasbp,123,82,71.0,9.21951219512195

@@ -45,10 +45,7 @@ from results_utils import record_result  # noqa: E402
 L = pc.MODEL_INPUT_LENGTH
 
 
-# --------------------------------------------------------------------------
 # Input representations
-# --------------------------------------------------------------------------
-
 def zero_pad(x):
     need = L - len(x)
     left = need // 2
@@ -106,10 +103,7 @@ def participant_features(model, variant, recordings, subject_ids, device):
     return np.stack([emb[owners == int(s)].mean(axis=0) for s in subject_ids])
 
 
-# --------------------------------------------------------------------------
 # Constant baseline in the same result format as evaluate_features()
-# --------------------------------------------------------------------------
-
 def training_mean_result(y_train, y_eval, split, seed=42):
     y_true = np.asarray(y_eval, dtype=float)
     y_pred = np.full_like(y_true, float(np.mean(y_train)))
@@ -128,10 +122,7 @@ def training_mean_result(y_train, y_eval, split, seed=42):
     }
 
 
-# --------------------------------------------------------------------------
-# Main
-# --------------------------------------------------------------------------
-
+# MAIN
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawTextHelpFormatter)

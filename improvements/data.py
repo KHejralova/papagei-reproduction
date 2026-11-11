@@ -1,18 +1,14 @@
 """
-Shared helpers for the improvement experiments on PPG-BP.
+PPG-BP data: metadata, the supplied participant split, raw recordings and
+preprocessing.
 
-Everything here mirrors the reproduction notebook (01_ppgbp_reprod.ipynb)
-so that improvement results are directly comparable with Kaja's numbers:
+Everything here mirrors the reproduction notebook (01_ppgbp_reprod.ipynb) so
+improvement results are directly comparable with the reproduction:
 
 - same metadata file and column names,
 - same supplied 205-participant split (123 train / 41 val / 41 test),
-- same per-recording preprocessing (drop last sample, z-score,
-  pyPPG Chebyshev bandpass 0.5-12 Hz, resample 1000 -> 125 Hz),
-- same model configurations and output index (outputs[0]),
-- same participant-level aggregation (mean of the 3 recording embeddings).
-
-The only thing the experiments change is what is done *after* preprocessing
-(e.g. how a 2.1 s recording is turned into the model input).
+- same per-recording preprocessing (drop last sample, z-score, pyPPG
+  Chebyshev band-pass 0.5-12 Hz, resample 1000 -> 125 Hz).
 """
 
 import sys
@@ -20,23 +16,25 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import torch
 
+# The repo root holds evaluation_utils, results_utils and PaPaGei's own
+# packages (preprocessing, linearprobing, models); make them importable
+# when a script in improvements/ is run.
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from linearprobing.utils import (
-    load_model_without_module_prefix,
-    resample_batch_signal,
-)
-from models.resnet import ResNet1D, ResNet1DMoE
+from linearprobing.utils import resample_batch_signal
 from preprocessing.ppg import preprocess_one_ppg_signal
 
-FS_ORIGINAL = 1000
-FS_TARGET = 125
-MODEL_INPUT_LENGTH = 1250  # 10 s at 125 Hz, the length used in pre-training
+FS_ORIGINAL = 1000          # PPG-BP sampling rate (Hz)
+FS_TARGET = 125             # PaPaGei's sampling rate (Hz)
+MODEL_INPUT_LENGTH = 1250   # 10 s at 125 Hz, the length used in pre-training
+RECORDING_LENGTH = 263      # one 2.1 s recording at 125 Hz
 RECORDINGS_PER_PARTICIPANT = 3
+
+TARGETS = ["sysbp", "diasbp", "hr"]
+UNITS = {"sysbp": "mmHg", "diasbp": "mmHg", "hr": "bpm"}
 
 # Supplied split, copied verbatim from the reproduction notebook (cell 17).
 TRAIN_IDS = [
@@ -74,7 +72,7 @@ COLUMN_RENAMES = {
 
 
 # --------------------------------------------------------------------------
-# Data
+# Metadata and split
 # --------------------------------------------------------------------------
 
 def data_file_dir(data_dir):
@@ -91,15 +89,13 @@ def data_file_dir(data_dir):
 
 def load_metadata(data_dir):
     """PPG-BP spreadsheet with the same renames as the notebook."""
-    df = pd.read_excel(
-        data_file_dir(data_dir) / "PPG-BP dataset.xlsx", header=1
-    )
-    df = df.rename(columns=COLUMN_RENAMES)
-    return df
+    df = pd.read_excel(data_file_dir(data_dir) / "PPG-BP dataset.xlsx",
+                       header=1)
+    return df.rename(columns=COLUMN_RENAMES)
 
 
 def split_metadata(df):
-    """Return {'train': df, 'val': df, 'test': df} using the supplied split.
+    """{'train': df, 'val': df, 'test': df} using the supplied split.
 
     Rows are sorted by subject_ID so features and targets always line up.
     """
@@ -116,9 +112,33 @@ def split_metadata(df):
     return splits
 
 
+def apply_drop(splits, drop_ids):
+    """Leave participants out of every split (e.g. duplicate recordings)."""
+    if not drop_ids:
+        return splits
+    out = {}
+    for name, df in splits.items():
+        gone = df["subject_ID"].isin(drop_ids)
+        if gone.any():
+            print(f"Leaving out participant(s) "
+                  f"{df.loc[gone, 'subject_ID'].tolist()} from {name}")
+        out[name] = df[~gone].reset_index(drop=True)
+    return out
+
+
+def load_splits(data_dir, drop_ids=()):
+    """Metadata split into train / val / test, minus the dropped IDs."""
+    return apply_drop(split_metadata(load_metadata(data_dir)), drop_ids)
+
+
+# --------------------------------------------------------------------------
+# Recordings and preprocessing
+# --------------------------------------------------------------------------
+
 def load_raw_recording(data_dir, subject_id, recording):
-    """One raw 2.1 s recording, with the last sample dropped as in the notebook."""
-    path = data_file_dir(data_dir) / "0_subject" / f"{subject_id}_{recording}.txt"
+    """One raw 2.1 s recording, last sample dropped as in the notebook."""
+    path = (data_file_dir(data_dir) / "0_subject" /
+            f"{subject_id}_{recording}.txt")
     signal = pd.read_csv(path, sep="\t", header=None).values.squeeze()
     # Exactly as the notebook: drop the last entry (the files end with a
     # trailing tab, which pandas reads as an empty value).
@@ -134,14 +154,12 @@ def zscore(signal):
 
 
 def preprocess_recording(raw_signal):
-    """Notebook order: z-score -> pyPPG bandpass -> resample to 125 Hz."""
+    """Notebook order: z-score -> pyPPG band-pass -> resample to 125 Hz."""
     signal = zscore(raw_signal)
-    signal, _, _, _ = preprocess_one_ppg_signal(
-        waveform=signal, frequency=FS_ORIGINAL
-    )
-    signal = resample_batch_signal(
-        signal, fs_original=FS_ORIGINAL, fs_target=FS_TARGET, axis=0
-    )
+    signal, _, _, _ = preprocess_one_ppg_signal(waveform=signal,
+                                                frequency=FS_ORIGINAL)
+    signal = resample_batch_signal(signal, fs_original=FS_ORIGINAL,
+                                   fs_target=FS_TARGET, axis=0)
     return np.asarray(signal, dtype=np.float32)
 
 
@@ -155,6 +173,20 @@ def load_preprocessed_recordings(data_dir, subject_ids):
         ]
     check_preprocessing(data_dir, subject_ids)
     return out
+
+
+def raw_matrix(recordings, subject_ids, length=RECORDING_LENGTH):
+    """(n_participants, 3, length) array for the ROCKET-family models.
+
+    Two recordings (participant 231) are 4.2 s long; they are cropped to the
+    first `length` samples so every series has the same length.
+    """
+    n_long = sum(len(r) > length for i in subject_ids for r in recordings[i])
+    if n_long:
+        print(f"Raw series for ROCKET-family models: {n_long} longer "
+              f"recording(s) cropped to the first {length} samples")
+    return np.stack([np.stack([r[:length] for r in recordings[i]])
+                     for i in subject_ids]).astype(np.float64)
 
 
 _FILTER_CHECKED = False
@@ -202,67 +234,3 @@ def check_preprocessing(data_dir, subject_ids, n_participants=10):
             "data_PPG/features_improvements/ if it was filled in this "
             "environment.")
     _FILTER_CHECKED = True
-
-
-# --------------------------------------------------------------------------
-# Model
-# --------------------------------------------------------------------------
-
-MODEL_FILES = {
-    "papagei_s": "papagei_s.pt",
-    "papagei_s_svri": "papagei_s_svri.pt",
-    "papagei_p": "papagei_p.pt",
-}
-
-
-def build_model(model_name, weights_dir="weights", device="cpu",
-                load_weights=True):
-    """Same configurations as the reproduction notebook (cells 29, 33, 36)."""
-    common = {"in_channels": 1, "base_filters": 32, "kernel_size": 3, "stride": 2,
-                  "groups": 1, "n_block": 18, "n_classes": 512}
-    if model_name == "papagei_s":
-        model = ResNet1DMoE(n_experts=3, **common)
-    elif model_name == "papagei_s_svri":
-        model = ResNet1D(use_mt_regression=False, use_projection=False,
-                         **common)
-    elif model_name == "papagei_p":
-        model = ResNet1D(**common)
-    else:
-        raise ValueError(f"Unknown model {model_name}")
-
-    if load_weights:
-        path = Path(weights_dir) / MODEL_FILES[model_name]
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Missing weights '{path}'. Download {MODEL_FILES[model_name]} "
-                "from https://zenodo.org/records/13983110 into weights/."
-            )
-        model = load_model_without_module_prefix(model, str(path))
-    model.to(device)
-    model.eval()
-    return model
-
-
-def embed_signals(model, signals, device="cpu", batch_size=256):
-    """Embed a list of 1D signals; returns (n_signals, 512) array.
-
-    Signals of different lengths are embedded in separate batches, which is
-    fine because the encoder averages over time before its last layer.
-    Uses outputs[0], the same output the notebook uses.
-    """
-    embeddings = [None] * len(signals)
-    by_length = {}
-    for i, s in enumerate(signals):
-        by_length.setdefault(len(s), []).append(i)
-
-    with torch.inference_mode():
-        for idx in by_length.values():
-            for start in range(0, len(idx), batch_size):
-                chunk = idx[start:start + batch_size]
-                x = torch.tensor(np.stack([signals[i] for i in chunk]),
-                                 dtype=torch.float32)
-                x = x.unsqueeze(1).to(device)
-                out = model(x)[0].cpu().numpy()
-                for j, i in enumerate(chunk):
-                    embeddings[i] = out[j]
-    return np.stack(embeddings)

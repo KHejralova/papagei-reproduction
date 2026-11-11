@@ -8,6 +8,27 @@ numbers are directly comparable with the reproduction.
 Results are appended to `results/improvement_results.csv`; per-participant
 predictions and summary tables go to `results/improvements/`.
 
+## Code structure
+
+Each module has one job; the two numbered scripts are short "recipes" that
+put them together.
+
+| File | What it does |
+| --- | --- |
+| `data.py` | PPG-BP metadata, the supplied participant split, raw recordings, preprocessing (identical to the reproduction notebook) and the filter-stability check |
+| `features.py` | Simple features: demographics, sVRI / SQI / IPA, heart rate from pulse peaks |
+| `representations.py` | Ways to fit a 2.1 s recording into PaPaGei's 10 s input (zero padding, tiling, ...) |
+| `embeddings.py` | Loading PaPaGei and turning recordings into per-participant embeddings (cached) |
+| `estimators.py` | The methods compared: ridge on feature sets, stacking (PPG score), ROCKET family |
+| `evaluation.py` | Repeated CV, metrics, corrected t-test + Holm, hold-out results, timing |
+| `plots.py` | Friedman test, critical difference diagrams, multiple comparison matrices |
+| `01_input_representation.py` | Experiment 1 |
+| `02_feature_fusion.py` | Experiment 2 |
+
+`estimators.py` and `plots.py` are not called `models.py` / `figures.py`
+because the repo already has a `models` package (PaPaGei's network) and a
+`figures` folder, and a module with the same name would shadow them.
+
 ## Setup
 
 1. Download the PPG-BP data from
@@ -114,8 +135,8 @@ install aeon into a copy of the environment instead
   output blew up (median correlation 0.29 with the same filter in the stable
   SOS form) and pulse peaks vanished; SciPy 1.18 was fine. Every run now
   checks the filter against the SOS version and stops if they disagree
-  (`ppgbp_common.check_preprocessing`).
+  (`data.check_preprocessing`).
 - IPA is computed but not used: the released logic finds a full beat in only
   about a third of the 2.1 s recordings and gives implausible values.
 - `morphology.py` imports `scipy.integrate.trapz`, which recent SciPy versions
-  removed, so the features are re-implemented in `improvements/ppg_features.py`.
+  removed, so the features are re-implemented in `improvements/features.py`.

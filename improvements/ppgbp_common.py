@@ -15,8 +15,8 @@ The only thing the experiments change is what is done *after* preprocessing
 (e.g. how a 2.1 s recording is turned into the model input).
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -26,13 +26,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from linearprobing.utils import (  # noqa: E402
-    resample_batch_signal,
+from linearprobing.utils import (
     load_model_without_module_prefix,
+    resample_batch_signal,
 )
-from preprocessing.ppg import preprocess_one_ppg_signal  # noqa: E402
-from models.resnet import ResNet1D, ResNet1DMoE  # noqa: E402
-
+from models.resnet import ResNet1D, ResNet1DMoE
+from preprocessing.ppg import preprocess_one_ppg_signal
 
 FS_ORIGINAL = 1000
 FS_TARGET = 125
@@ -154,7 +153,55 @@ def load_preprocessed_recordings(data_dir, subject_ids):
             preprocess_recording(load_raw_recording(data_dir, sid, r))
             for r in range(1, RECORDINGS_PER_PARTICIPANT + 1)
         ]
+    check_preprocessing(data_dir, subject_ids)
     return out
+
+
+_FILTER_CHECKED = False
+
+
+def check_preprocessing(data_dir, subject_ids, n_participants=10):
+    """Stop if pyPPG's band-pass filter is numerically unstable here.
+
+    pyPPG designs its 4th-order Chebyshev II band-pass (0.5-12 Hz at 1000 Hz)
+    in transfer-function (b, a) form and applies it with filtfilt. With such
+    a low cut-off relative to the sampling rate, that form is numerically
+    fragile: depending on the SciPy build, the output can blow up and the
+    pulse shape is lost, silently corrupting every feature and embedding.
+    (Found when installing aeon downgraded SciPy 1.18 -> 1.17 on Linux.)
+
+    The check filters a few recordings both with pyPPG and with the same
+    filter in the numerically stable second-order-sections (SOS) form, and
+    requires the two to agree.
+    """
+    global _FILTER_CHECKED
+    if _FILTER_CHECKED:
+        return
+    import scipy
+    from scipy import signal
+    sos = signal.cheby2(4, 20, [0.5, 12], "bandpass", fs=FS_ORIGINAL,
+                        output="sos")
+    win = round(FS_ORIGINAL * 50 / 1000)  # pyPPG's 50 ms smoothing window
+    corrs = []
+    for sid in list(subject_ids)[:n_participants]:
+        for r in range(1, RECORDINGS_PER_PARTICIPANT + 1):
+            z = zscore(load_raw_recording(data_dir, sid, r))
+            ppg, _, _, _ = preprocess_one_ppg_signal(waveform=z,
+                                                     frequency=FS_ORIGINAL)
+            ref = signal.filtfilt(np.ones(win) / win, 1,
+                                  signal.sosfiltfilt(sos, z))
+            corrs.append(np.corrcoef(ppg, ref)[0, 1])
+    if np.median(corrs) < 0.99:
+        raise RuntimeError(
+            "pyPPG's band-pass filter is numerically unstable with this "
+            f"SciPy build ({scipy.__version__}): its output matches the "
+            f"stable version with median correlation {np.median(corrs):.2f} "
+            "(should be about 1.00). Every feature computed now would be "
+            "wrong. Check your SciPy version (the run that produced the "
+            "earlier results is fine), and delete "
+            "data_PPG/features_improvements/ if it was filled in this "
+            "environment.")
+    _FILTER_CHECKED = True
 
 
 # --------------------------------------------------------------------------
@@ -171,8 +218,8 @@ MODEL_FILES = {
 def build_model(model_name, weights_dir="weights", device="cpu",
                 load_weights=True):
     """Same configurations as the reproduction notebook (cells 29, 33, 36)."""
-    common = dict(in_channels=1, base_filters=32, kernel_size=3, stride=2,
-                  groups=1, n_block=18, n_classes=512)
+    common = {"in_channels": 1, "base_filters": 32, "kernel_size": 3, "stride": 2,
+                  "groups": 1, "n_block": 18, "n_classes": 512}
     if model_name == "papagei_s":
         model = ResNet1DMoE(n_experts=3, **common)
     elif model_name == "papagei_s_svri":
@@ -209,7 +256,7 @@ def embed_signals(model, signals, device="cpu", batch_size=256):
         by_length.setdefault(len(s), []).append(i)
 
     with torch.inference_mode():
-        for _, idx in by_length.items():
+        for idx in by_length.values():
             for start in range(0, len(idx), batch_size):
                 chunk = idx[start:start + batch_size]
                 x = torch.tensor(np.stack([signals[i] for i in chunk]),

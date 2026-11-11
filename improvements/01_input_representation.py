@@ -11,6 +11,9 @@ other step identical and compares input representations:
   native        no padding at all (the encoder averages over time, so any
                 length works)
   tile          repeat the recording end-to-end until it is 1250 long
+  tile_cycles   like tile, but cut at systolic peaks first so every join
+                falls at the same point of the heartbeat (tests whether the
+                jump at tile joins is what hurts heart rate)
   reflect       centred mirror padding (signal is reflected at its edges)
   concat3_tile  join the participant's 3 recordings (~6.3 s), then tile to
                 1250 -> one embedding per participant instead of three
@@ -29,23 +32,26 @@ Example (from the repo root):
 
 import argparse
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.signal import find_peaks
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import ppgbp_common as pc  # noqa: E402
+import ppgbp_common as pc
 
-from evaluation_utils import evaluate_features  # noqa: E402
-from results_utils import record_result  # noqa: E402
-
+from evaluation_utils import evaluate_features
+from results_utils import record_result
 
 L = pc.MODEL_INPUT_LENGTH
 
 
+# --------------------------------------------------------------------------
 # Input representations
+# --------------------------------------------------------------------------
+
 def zero_pad(x):
     need = L - len(x)
     left = need // 2
@@ -60,6 +66,16 @@ def tile(x):
     return np.resize(x, L)  # np.resize repeats the array cyclically
 
 
+def tile_cycles(x):
+    """Tile whole cardiac cycles: cut from the first to the last systolic peak
+    so the joins fall at the same point of the beat (no artificial jump)."""
+    peaks, _ = find_peaks(x, distance=int(0.33 * pc.FS_TARGET),
+                          prominence=0.5 * np.std(x))
+    if len(peaks) < 2:
+        return tile(x)
+    return np.resize(x[peaks[0]:peaks[-1]], L)
+
+
 def reflect(x):
     need = L - len(x)
     left = need // 2
@@ -70,6 +86,7 @@ PER_RECORDING = {
     "zero_pad": zero_pad,
     "native": native,
     "tile": tile,
+    "tile_cycles": tile_cycles,
     "reflect": reflect,
 }
 PER_PARTICIPANT = {
@@ -103,7 +120,10 @@ def participant_features(model, variant, recordings, subject_ids, device):
     return np.stack([emb[owners == int(s)].mean(axis=0) for s in subject_ids])
 
 
+# --------------------------------------------------------------------------
 # Constant baseline in the same result format as evaluate_features()
+# --------------------------------------------------------------------------
+
 def training_mean_result(y_train, y_eval, split, seed=42):
     y_true = np.asarray(y_eval, dtype=float)
     y_pred = np.full_like(y_true, float(np.mean(y_train)))
@@ -122,7 +142,10 @@ def training_mean_result(y_train, y_eval, split, seed=42):
     }
 
 
-# MAIN
+# --------------------------------------------------------------------------
+# Main
+# --------------------------------------------------------------------------
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawTextHelpFormatter)

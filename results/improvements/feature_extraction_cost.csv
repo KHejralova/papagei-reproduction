@@ -1,0 +1,5 @@
+step,seconds_per_participant,ms_per_participant
+preprocessing (filter + resample),0.0016951721999854878,1.6951721999854878
+"handcrafted features (sVRI, SQI, IPA, peak HR)",0.0007700611333348207,0.7700611333348206
+papagei_s embedding,0.030376513899985486,30.376513899985486
+papagei_p embedding,0.02121569166665722,21.21569166665722

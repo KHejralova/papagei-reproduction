@@ -24,6 +24,7 @@ put them together.
 | `plots.py` | Friedman test, critical difference diagrams, multiple comparison matrices |
 | `01_input_representation.py` | Experiment 1 |
 | `02_feature_fusion.py` | Experiment 2 |
+| `03_report_figures.py` | Report figures and results table from the saved outputs |
 
 `estimators.py` and `plots.py` are not called `models.py` / `figures.py`
 because the repo already has a `models` package (PaPaGei's network) and a
@@ -116,6 +117,20 @@ Useful options: `--aeon` (with nothing after it) skips the ROCKET family,
 `--out-tag` (keeps outputs of different runs apart). Padding variants from
 experiment 1 can be compared under the same CV with `model@variant`, e.g.
 `--embeddings papagei_s papagei_s@tile_cycles`.
+
+## 3. Report figures and results table
+
+After `02 --mode cv` and `02 --mode test`:
+
+```bash
+python improvements/03_report_figures.py
+```
+
+Writes to `results/improvements/report/` (PNG at 300 dpi and vector PDF):
+`fig_cv_mae` (CV MAE per method and target), `fig_padding` (experiment 1),
+`fig_test_pred_sysbp` (test-set predicted vs true systolic BP),
+`fig_cost_sysbp` (accuracy vs fit+predict time), and `results_table`
+(.csv, .md for this README, .tex for the report).
 
 ### Installing aeon safely
 

@@ -1,244 +1,195 @@
-<div align="center">
-  <a href="https://github.com/Nokia-Bell-Labs/papagei-foundation-model">
-    <img width="20%" height="250%" src="figures/papagei-logo.png" alt="PaPaGei Logo">
-  </a>
-  <h1>PaPaGei</h1>
-  <h2>Open Foundation Models for Optical Physiological Signals</h2>
-  <p>
-    <a href="https://arxiv.org/abs/2410.20542"><img src="https://img.shields.io/badge/arXiv-2410.20542-b31b1b.svg" alt="ArXiv"></a>
-    <a href="https://zenodo.org/records/13983110"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.13983110.svg" alt="DOI"></a>
-    </p>
-</div>
+# PaPaGei reproduction on PPG-BP
 
-## 📖 Overview
+This part of the project investigates the downstream performance of pretrained **PaPaGei-S** and **PaPaGei-P** on the PPG-BP dataset. It covers systolic and diastolic blood-pressure regression, heart-rate regression, normal versus non-normal blood-pressure classification, data-integrity checks, and comparisons with constant predictors, random forests and MOMENT.
 
-Photoplethysmography (PPG) is a non-invasive optical technique widely used for monitoring biosignals and cardiovascular health, prevalent in both clinical settings and consumer wearable devices. Current machine learning models for PPG signals are often task-specific and struggle with generalizability. Many prior works utilize single-device datasets, neglect out-of-domain generalization, or do not publicly release their models, thereby limiting reproducibility and broader research progress.
+**Start with [`PPG-BP_reprod_tidy_v.ipynb`](PPG-BP_reprod_tidy_v.ipynb).** It presents the experiments, saved results and discussion in order. It also allows selected calculations to be repeated. PaPaGei pretraining is not repeated.
 
-**PaPaGei** is the **first open foundation model for PPG signals**. It is pre-trained on over **57,000 hours** of 20 million unlabeled PPG segments, exclusively using publicly available datasets. We benchmark PaPaGei against popular time-series foundation models and other methods across **20 tasks from 10 diverse datasets**, covering cardiovascular health, sleep disorders, pregnancy monitoring, and wellbeing assessment.
+This README documents the reproduction work only. Improvement experiments are outside its scope.
 
-Our novel architecture incorporates representation learning approaches that capitalize on morphological differences in PPG signals across individuals, enabling it to **capture richer representations** than traditional contrastive learning methods. PaPaGei demonstrates significant improvements, boosting classification and regression performance by an average of **6.3% and 2.9%**, respectively, compared to other leading time-series foundation models in at least 14 tasks. Notably, PaPaGei is **more data- and parameter-efficient**, outperforming models up to 70x larger.
+## Files and their roles
 
-Beyond accuracy, we investigate robustness against different skin tones, establishing a benchmark for evaluating bias in future models. PaPaGei can be readily used as a **feature extractor** or an **encoder** for multimodal models, paving the way for new advancements in multimodal health monitoring.
+| File or directory | Purpose |
+| --- | --- |
+| `PPG-BP_reprod_tidy_v.ipynb` | Main report notebook: inspect results, generate comparisons and optionally rerun selected stages. |
+| `01_ppgbp_reprod.ipynb` | Original development notebook containing the experimental code and exploratory analysis. Retained as a record; it is not a guaranteed clean-kernel, Run All entry point. |
+| `evaluation_utils.py` | Shared Ridge evaluator used for the duplicate sensitivity check and compatible feature evaluations. |
+| `results_utils.py` | Prints regression summaries and appends metrics and run details to a CSV log. |
+| `results/` | Saved metrics, predictions, split information and reference values used in the report. |
+| `reproduction_artifacts.zip` | Saved features, processed signals, released split CSVs and historical regression dictionaries required by the report notebook. Extract into the repository root. |
+| `requirements.txt` | Original repository dependency list; versions are mostly unpinned. |
+| `models/`, `linearprobing/`, `preprocessing/`, `baselines/` | Original PaPaGei implementation used by the reproduction. Keep these packages in the repository. |
+| `README_upstream.md` and `LICENSE` | Original project documentation and licence. |
 
-<div align="center">
-  <img src="figures/model-overview.png" alt="PaPaGei Model Overview" width="70%"/>
-</div>
+## Experimental setups
 
----
+| Setup | Training | Validation | Test | Main differences |
+| --- | ---: | ---: | ---: | --- |
+| Original 205 participants | 123 | 41 | 41 | Released participant lists; Ridge alpha includes 1000; scaling before CV. |
+| 205-participant rerun | 123 | 41 | 41 | Same split, with Ridge alpha restricted to 0.1, 1, 10 and 100. |
+| Adapted 219 participants | 131 | 44 | 44 | Six within-participant duplicate recordings removed; participants sharing a recording grouped together; scaling inside grouped CV. |
 
-## 🚀 Updates
+Unless a section explicitly reports separate splits, evaluation combines validation and test participants: **82 participants for the 205 setup and 88 for the 219 setup**. Hyperparameter selection uses training participants only. The adapted experiment changes several factors together; it does not isolate the effect of adding participants.
 
-* **Jan 22, 2025**: PaPaGei accepted to the International Conference on Learning Representations (ICLR). [Read the latest version of the paper](https://arxiv.org/pdf/2410.20542v2).
-* **Dec 15, 2024**: PaPaGei received the 🏆 **Best Paper Award** at the NeurIPS workshop on Time Series in the Age of Large Models (TSALM). [See accepted papers](https://neurips-time-series-workshop.github.io/accepted-papers/).
-* **Oct 29, 2024**: Paper available on [arXiv](https://arxiv.org/abs/2410.20542).
-* **Oct 24, 2024**: Access the model weights on Zenodo ([here](https://zenodo.org/records/13983110)).
-* **Oct 15, 2024**: Code released! 🎉
+Classification uses `Normal = 0`; prehypertension and both hypertension stages are grouped as `non-normal = 1`. The final classification baseline table uses only the 205 setup.
 
----
+## 1. Environment
 
-## 🛠️ How to Use PaPaGei
+The work was run on CPU using the Conda environment `papagei_env`. The supplied report notebook records Python **3.10.21**. Use that working environment when available.
 
-PaPaGei offers versatility for developers and researchers:
+A starting installation for a new environment is:
 
-1.  **Out-of-the-Box Feature Extraction**: Use PaPaGei to extract transferable features for your machine learning tasks, replacing handcrafted features.
-2.  **PPG Encoder Integration**: Incorporate PaPaGei as a PPG encoder into larger frontier models (e.g., LLMs like [AnyMAL](https://arxiv.org/abs/2309.16058)).
+```bash
+conda create -n papagei_env python=3.10.21
+conda activate papagei_env
+python -m pip install -r requirements.txt
+python -m pip install "pyPPG==1.0.41" "matplotlib-inline==0.1.6" jupyterlab ipykernel jinja2
+python -m ipykernel install --user --name papagei_env --display-name "Python (papagei_env)"
+```
 
-### 📦 Installation
+This is a dependency-installation recipe, **not a version-locked recreation of the original environment**. Dependency versions can affect preprocessing and fitted results. Before archiving the final experiment, export the actual working environment:
 
-1.  **Create a Conda Environment:**
-    ```bash
-    conda create -n papagei_env python=3.10
-    conda activate papagei_env
-    ```
-2.  **Install Required Packages:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  **Install pyPPG Package:**
-    ```bash
-    pip install pyPPG==1.0.41
-    ```
-    *Note: This might show a `wfdb` package conflict, but it should still function correctly.*
+```bash
+conda env export --no-builds > environment.yml
+python -m pip freeze > requirements-reproduction-lock.txt
+```
 
-### 🧠 Downloading Model Weights
+These exports should be made from the environment that successfully runs the notebook, not from a newly installed environment that has not been checked. If an `environment.yml` from that run is included, it can be recreated with `conda env create -f environment.yml`.
 
-Model weights are hosted on Zenodo by Arvind Pillai.
-* **Download Link**: [Zenodo Record 13983110](https://zenodo.org/records/13983110)
-* For feature extraction, save the downloaded model weights (e.g., `papagei_s.pt`) into a folder named `weights/` in your project directory, or update the path accordingly in your scripts.
+The report notebook uses saved MOMENT embeddings and does not need to download the MOMENT model. Repeating MOMENT feature extraction in the original development workflow additionally requires `momentfm` and the pretrained model `AutonLab/MOMENT-1-large`.
 
-### ✨ Extracting Embeddings: Quick Start
+## 2. Data, weights and saved inputs
 
-Here’s a brief example of how to load the PaPaGei-S model and extract embeddings:
+### Raw PPG-BP data
 
-1.  **Import Necessary Packages:**
-    ```python
-    import numpy as np
-    import torch
-    from linearprobing.utils import resample_batch_signal, load_model_without_module_prefix
-    from preprocessing.ppg import preprocess_one_ppg_signal
-    from segmentations import waveform_to_segments
-    from torch_ecg._preprocessors import Normalize
-    from models.resnet import ResNet1DMoE
-    ```
+Download [PPG-BP from Figshare](https://figshare.com/articles/dataset/PPG-BP_Database_zip/5459299). Extract it so these paths exist relative to the repository root:
 
-2.  **Load the PaPaGei-S Model:**
-    ```python
-    # Define Model Configuration
-    model_config = {
-        'base_filters': 32,
-        'kernel_size': 3,
-        'stride': 2,
-        'groups': 1,
-        'n_block': 18,
-        'n_classes': 512, # Embedding dimension
-        'n_experts': 3
-    }
+- `data_PPG/Data File/PPG-BP dataset.xlsx`
+- `data_PPG/Data File/0_subject/2_1.txt` and the remaining raw recordings.
 
-    # Initialize Model
-    model = ResNet1DMoE(
-        in_channels=1,
-        base_filters=model_config['base_filters'],
-        kernel_size=model_config['kernel_size'],
-        stride=model_config['stride'],
-        groups=model_config['groups'],
-        n_block=model_config['n_block'],
-        n_classes=model_config['n_classes'],
-        n_experts=model_config['n_experts']
-    )
+The raw data are required even in saved-results mode: the notebook inspects a waveform, reads participant metadata and checks recording hashes. Raw data are not bundled in the saved-artifact archive.
 
-    # Load Pre-trained Weights
-    model_path = "weights/papagei_s.pt" # Ensure this path is correct
-    model = load_model_without_module_prefix(model, model_path)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
-    model.eval() # Set model to evaluation mode
-    print(f"Model loaded on {device}")
-    ```
+### Saved reproduction artefacts
 
-3.  **Pre-process a PPG Signal:**
-    ```python
-    # Example PPG Signal
-    fs = 500  # Original sampling frequency in Hz
-    fs_target = 125 # Target sampling frequency in Hz
-    segment_duration_seconds = 10 # Duration of each segment in seconds
-    signal_duration_seconds = 60 # Total duration of the example signal
+Download [`reproduction_artifacts.zip`](reproduction_artifacts.zip) and extract its **contents into the repository root**, preserving the paths inside it. For example:
 
-    signal = np.random.randn(signal_duration_seconds * fs) # Example: 60s signal at 500Hz
-    print(f"Original PPG dimensions: {signal.shape}")
+```bash
+python -m zipfile -e reproduction_artifacts.zip .
+```
 
-    # Clean and segment the signal
-    signal_processed, _, _, _ = preprocess_one_ppg_signal(waveform=signal, frequency=fs)
-    
-    segment_length_original_fs = fs * segment_duration_seconds
-    segmented_signals = waveform_to_segments(
-        waveform_name='ppg', # Can be any name, not strictly used in this function
-        segment_length=segment_length_original_fs,
-        clean_signal=signal_processed
-    )
-    
-    # Resample segments
-    resampled_segments = resample_batch_signal(
-        segmented_signals, 
-        fs_original=fs, 
-        fs_target=fs_target, 
-        axis=-1
-    )
-    print(f"After segmentation and resampling: {resampled_segments.shape}") # (num_segments, segment_length_target_fs)
+The archive contains:
 
-    # Convert to PyTorch Tensor
-    signal_tensor = torch.Tensor(resampled_segments).unsqueeze(dim=1).to(device) # (num_segments, 1, segment_length_target_fs)
-    ```
+- Released `train.csv`, `val.csv` and `test.csv` under `data_PPG/Data File/`.
+- Preprocessed released recordings under `data_PPG/Data File/ppg/`.
+- Participant embedding dictionaries for PaPaGei-S, PaPaGei-P and MOMENT under `data_PPG/features/`.
+- Adapted PaPaGei embeddings and cleaned padded recordings under `data_PPG/reproduction_219_seed42/`.
+- Eighteen saved regression dictionaries under `results/`: two models × three targets × original/rerun/scaling procedures.
+- A SHA-256 manifest, `reproduction_artifacts_manifest.json`, identifying the bundled files.
 
-4.  **Extract Embeddings:**
-    ```python
-    with torch.inference_mode():
-        outputs = model(signal_tensor)
-        # PaPaGei-S returns a tuple (embeddings, expert_outputs, gating_weights)
-        # We are interested in the first element: embeddings
-        embeddings = outputs[0].cpu().detach().numpy()
-    print(f"Embedding dimensions: {embeddings.shape}") # (num_segments, n_classes)
-    ```
+The remaining result CSVs must be present under `results/` from the repository checkout. The archive does not replace those CSVs. Keep the archive and result CSVs from the same project version together.
 
-👉 For a comprehensive end-to-end example, including feature extraction and downstream task evaluation on the `ppg-bp` dataset, please refer to the Jupyter Notebook: [`example_papagei.ipynb`](https://github.com/Nokia-Bell-Labs/papagei-foundation-model/blob/main/example_papagei.ipynb).
+### PaPaGei checkpoints
 
-**Important Considerations:**
-* **Model Variability**: No single model excels across all tasks and datasets. We release the models that achieved the most wins in our evaluations.
-* **Confidence Intervals**: Instead of fixed random seeds, we use bootstrapping (500 iterations) to compute 95% confidence intervals, providing a performance range.
+Download `papagei_s.pt` and `papagei_p.pt` from the [authors' Zenodo record](https://zenodo.org/records/13983110), and place them under `weights/`.
 
----
+Checkpoints are required to regenerate embeddings; they are not required when loading all saved embeddings. The unused S-sVRI variant is not needed for the main report notebook. Raw data and downloaded checkpoints remain outside Git through `.gitignore`.
 
-## ⚙️ Workflow & Modules
+## 3. Display the reported results
 
-The end-to-end workflow of PaPaGei involves several key stages:
+From the repository root:
 
-<div align="center">
-  <img src="figures/PaPaGei.png" alt="PaPaGei Workflow Diagram" width="80%"/>
-</div>
+```bash
+conda activate papagei_env
+jupyter lab PPG-BP_reprod_tidy_v.ipynb
+```
 
-1.  **PPG Data Pre-processing** (`preprocessing/`, `segmentations.py`):
-    * `preprocessing/flatline.py`: Detects flatline sections in PPG signals using the `BioBSS` package.
-    * `preprocessing/ppg.py`:
-        * `preprocess_one_ppg_signal`: Applies a bandpass filter to raw signals.
-        * Includes I/O functions for batch processing and saving.
-    * `segmentations.py`:
-        * `waveform_to_segments`: Segments filtered PPG signals based on specified segment lengths.
-        * Utility functions for saving segments.
+1. Select **Python (papagei_env)**.
+2. Leave recomputation switches set to `False`.
+3. Skip the installation cell when dependencies are already installed. If installation is needed, run it separately and restart the kernel afterwards.
+4. Run the remaining cells in order.
 
-2.  **Morphology Augmentation Module Computation** (`morphology.py`):
-    * Computes morphological features like Stress-Induced Vascular Response Index (sVRI), Inflection Point Area ratio (IPA), and Signal Quality Index (SQI).
-    * `extract_svri`: Calculates sVRI.
-    * `skewness_sqi`: Calculates SQI.
-    * `compute_ipa`: Calculates IPA.
-    * Includes batch processing utilities.
+The notebook loads saved model results, recalculates lightweight checks and constant/majority baselines, and displays the comparisons. Section 9 contains the combined regression and classification tables.
 
-3.  **Dataset Handling and Time-Series Augmentations** (`dataset.py`, `augmentations.py`):
-    * `dataset.py`:
-        * `PPGDatasetLabelsArray`: A PyTorch custom `Dataset` class used for PaPaGei-S training. DataLoaders are set up in `training_mt.py`.
-    * `augmentations.py`:
-        * Provides time-series augmentation techniques implemented as `torch.nn.Module` classes for easy on-the-fly transformations during training.
+A saved-results run requires the dataset and saved artefacts above. It is not a CSV-only report or an end-to-end run from raw data with no saved inputs.
 
-4.  **Model Training** (`models/resnet.py`, `training_mt.py`):
-    * `models/resnet.py`: Contains the model architecture. `ResNet1DMoE` is the PaPaGei-S model.
-    * `training_mt.py`: Manages end-to-end distributed training for PaPaGei-S.
-        * `train_step`: Defines a single training step, including loss computation for PaPaGei-S.
-        * `training`: Orchestrates the training loop, checkpointing, and model saving.
-        * `main`: Entry point for distributed training.
+## 4. Recompute individual experiments
 
-5.  **Feature Extraction** (`feature_extraction.py`):
-    * `compute_signal_embeddings`: Extracts embeddings using the pre-trained model.
-    * `save_embeddings`: Utility for saving extracted embeddings.
+A `True` switch enables its stage only when that cell is executed. It does not automatically run prerequisites, enable downstream stages or save the new metrics. When upstream inputs change, rerun their dependent cells in order. Returning a switch to `False` reloads the archived result.
 
-6.  **Linear Evaluation**:
-    * The embeddings extracted in Step 5 can be used as input to linear models or shallow Artificial Neural Networks (ANNs) for various downstream classification or regression tasks.
+| Result or check | Notebook section | How to reproduce it |
+| --- | --- | --- |
+| Original signal preprocessing | 2.2 | Set `RECOMPUTE_RELEASED_PREPROCESSING=True`; run preprocessing from raw data. Intermediate signal files are overwritten. |
+| Released S/P embeddings | 3 | Set `RECOMPUTE_RELEASED_EMBEDDINGS=True`; run with processed signals and checkpoints. Intermediate feature files are overwritten. |
+| Original BP and HR MAEs | 4 | Change the actual call to `get_original_results(recompute=True)` and run Section 4 using the released embeddings. In the supplied version, the call still contains `False`; the separately declared `RECOMPUTE_ORIGINAL_REGRESSION` flag is not connected to it. |
+| Smaller-alpha-grid rerun | 5.2 | Set the local `recompute_rerun=True` in that section and execute its result loop and comparison. |
+| Validation/test error comparison | 5.3 | Run the section after Section 4; it reuses predictions without fitting another model. |
+| Scaling inside CV | 5.4 | Set the local `recompute_scaling=True`; run its loop and comparison. |
+| Duplicate audit | 5.5 | Run the hash and label inspection cells on raw recordings. |
+| Excluding participant 24 | 5.5 | Set the local `recompute_duplicate_check=True`; evaluate the two conditions. |
+| Excluded-participant audit | 5.6 | Run the recording-availability and label checks. |
+| Adapted grouped split | 6 | Set `REBUILD_219_SPLIT=True`; reconstruct and compare against the saved reference split. The reference CSV is still required. |
+| Adapted embeddings | 6.2 | Set `RECOMPUTE_219_EMBEDDINGS=True`; preprocess retained raw signals and extract embeddings in memory. |
+| Nested training CV | 6.3 | Set `RECOMPUTE_NESTED_CV=True`; run four outer/four inner grouped folds on training participants. |
+| Final adapted BP models | 6.4 | Set `RECOMPUTE_219_REGRESSION=True`; tune on training participants and evaluate the combined held-out participants. |
+| Individual and split-specific errors | 6.5 | Run using `final_predictions` from Section 6.4. |
+| PaPaGei classification | 7 | Set `RECOMPUTE_CLASSIFICATION=True`; run the helpers and both setup-specific cells. |
+| Mean/median BP baselines | 8.1 | Run the section; constants are always calculated using training labels only. |
+| Statistical features | 8.2 | Set `RECOMPUTE_STATISTICAL_FEATURES=True`; requires existing cleaned padded recordings from the archive. |
+| RF regression | 8.2 | Set `RECOMPUTE_RF_REGRESSION=True`; fit and tune forests from the statistical features. |
+| Majority/RF classification | 8.3 | Majority results are always recalculated. Set `RECOMPUTE_RF_CLASSIFICATION=True` to refit the forest. |
+| MOMENT BP/classification models | 8.4 | Set `RECOMPUTE_MOMENT_MODELS=True`; refit the downstream models from saved MOMENT embeddings. This does not rerun MOMENT extraction. |
+| Combined report tables | 9 | Run after the preceding sections; tables use the selected in-memory results. |
 
----
+The three lowercase sensitivity switches are assigned again in their own sections, so change those local assignments rather than only the copies in the setup cell.
 
-## 🙏 Acknowledgements
+The original development notebook documents additional feature-generation code and historical experiments. It contains exploratory cells, local paths and dependencies on previous kernel state, so it should be read and run by section. Exact clean-kernel regeneration of every historical artefact has not been verified. In particular, rebuilding MOMENT embeddings requires checking the original input-list definitions. The archive provides the features actually used for the saved results.
 
-We gratefully acknowledge the contributions of the following projects, which were instrumental in the evaluation of PaPaGei:
+## 5. Results compared with the paper
 
-* **Chronos**: [amazon-science/chronos-forecasting](https://github.com/amazon-science/chronos-forecasting)
-* **Moment**: [moment-timeseries-foundation-model/moment](https://github.com/moment-timeseries-foundation-model/moment)
-* **REGLE**: [Google-Health/genomics-research](https://github.com/Google-Health/genomics-research)
-* **TF-C**: [mims-harvard/TFC-pretraining](https://github.com/mims-harvard/TFC-pretraining)
-* **BYOL (for PPG Quality)**: [chengding0713/SiamQuality](https://github.com/chengding0713/SiamQuality/tree/main)
-* **Morphology (PPG features)**: [qiriro/PPG](https://github.com/qiriro/PPG)
+The published reference values below come from `results/paper_reference_results.csv`; reproduced original and rerun values come from the saved regression dictionaries, and adapted values from `results/reproduction_219_seed42/final_bp_results.csv`. Lower MAE is better.
 
----
+| Model | Target | Paper MAE | Original 205 | Rerun 205 | Adapted 219 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| PaPaGei-S | Systolic BP (mmHg) | 14.390 | 14.254 | 14.371 | 16.347 |
+| PaPaGei-P | Systolic BP (mmHg) | 13.600 | 14.307 | 17.946 | 15.137 |
+| PaPaGei-S | Diastolic BP (mmHg) | 8.710 | 8.910 | 8.950 | 9.043 |
+| PaPaGei-P | Diastolic BP (mmHg) | 8.880 | 8.882 | 9.376 | 9.250 |
+| PaPaGei-S | Heart rate (bpm) | 4.000 | 4.535 | 4.535 | — |
+| PaPaGei-P | Heart rate (bpm) | 3.470 | 4.585 | 4.327 | — |
 
-## 📜 Citation
+For normal/non-normal classification, higher AUROC is better. The intervals below are the saved reproduced 95% bootstrap intervals.
 
-If you use PaPaGei models, code, or ideas from this project in your research, please cite our paper:
+| Model | Paper AUROC | Original 205 AUROC (95% CI) | Adapted 219 AUROC (95% CI) |
+| --- | ---: | --- | --- |
+| PaPaGei-S | 0.770 | 0.758 [0.647, 0.861] | 0.641 [0.479, 0.775] |
+| PaPaGei-P | 0.740 | 0.638 [0.505, 0.766] | 0.708 [0.556, 0.833] |
 
-```bibtex
-@inproceedings{pillai2025papagei,
-  title={{PaPaGei: Open Foundation Models for Optical Physiological Signals}},
-  author={Arvind Pillai and Dimitris Spathis and Fahim Kawsar and Mohammad Malekzadeh},
-  booktitle={The Thirteenth International Conference on Learning Representations, {ICLR} 2025},
-  year={2025},
-  month={April},
-  address={Singapore},
-  note={Accepted. arXiv preprint arXiv:2410.20542},
-  url={[https://arxiv.org/abs/2410.20542](https://arxiv.org/abs/2410.20542)}
-}
+The notebook includes the complete baseline tables and regression intervals. BP errors were close to some published values, but model rankings and heart-rate results were not fully reproduced. Changes to the grid or evaluation setup did not consistently improve agreement.
 
+## 6. The custom helpers
+
+### `evaluation_utils.evaluate_features()`
+
+Fits a `StandardScaler`–`Ridge` pipeline with scaling inside four-fold, unshuffled KFold CV. The search tests alpha `[0.1, 1, 10, 100]` and solvers `auto`, `cholesky`, `sparse_cg`, selecting by negative MSE. It returns MAE, predictions, selected parameters and a 95% MAE interval from 500 participant bootstrap samples, with seed 42 by default.
+
+The caller supplies already separated training and evaluation arrays. The helper **does not create participant splits or enforce shared-recording groups**. `evaluation_split` labels the supplied evaluation; it does not choose rows automatically. The grouped adapted experiments use their own notebook code.
+
+### `results_utils.record_result()`
+
+Prints a regression summary and appends one row to a CSV, including run ID, model, target, procedure, sample counts, MAE, confidence interval and selected parameters. It checks the existing CSV schema before appending. Calling it repeatedly appends repeated rows; it does not replace an existing run. It does not fit models or save the complete predictions dictionary.
+
+## 7. Interpretation and reproducibility limits
+
+- The released split omits 14 labelled participants. Their available recordings and labels do not establish the reason for exclusion.
+- One exact recording is shared by participants 23 and 24 across the original training/validation split. The adapted setup keeps those participants together.
+- The 205 statistical baseline uses duplicate-cleaned padded recordings, whereas the original PaPaGei embeddings retain the released recording handling. This limits strict like-for-like interpretation.
+- Padding occupies much of each short recording and can dominate simple amplitude statistics.
+- Bootstrap intervals describe evaluation-sample uncertainty for fixed fitted models, not variation from retraining on new splits.
+- The historical RF classification run was unseeded. The verification branch uses seed 42 and may not recover the same score.
+- Some historical regression bootstraps were not seeded. Exact intervals can change on recomputation.
+- This README and archive were checked against the submitted project snapshot. A fresh environment installation and full model-training workflow have not been validated end to end.
+
+## Attribution and AI assistance
+
+The implementation is based on [Nokia Bell Labs' PaPaGei repository](https://github.com/Nokia-Bell-Labs/papagei-foundation-model) and [the PaPaGei paper](https://arxiv.org/abs/2410.20542). Original documentation is retained in `README_upstream.md`; original licence and copyright notices are preserved in `LICENSE` and the source files. MOMENT embeddings use `AutonLab/MOMENT-1-large`.
+
+ChatGPT (OpenAI) assisted with Python code development and debugging, notebook organisation and comments. Responsibility for the submitted analysis and conclusions remains with the project author. 

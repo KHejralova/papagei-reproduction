@@ -6,9 +6,7 @@ Every method is described by a "feature set" spec:
       a ridge model on some feature blocks; with "stacked", a first ridge on
       that embedding makes one "PPG score" that is added as a feature
   {"kind": "aeon", "method": "rocket" | "minirocket" | "hydra" | "quant"}
-      a standard time series regression method from the course (Lab 8),
-      trained on the raw preprocessed PPG
-
+     
 Note: Named estimators.py, not models.py, because the repo already has a
 `models` package holding PaPaGei's network.
 """

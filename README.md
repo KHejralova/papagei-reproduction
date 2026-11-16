@@ -41,7 +41,7 @@ The project has two parts:
 
 ## 1. Environment
 
-The work was run on CPU using the Conda environment `papagei_env`. The supplied report notebook records Python **3.10.21**. Use that working environment when available.
+The work was run on CPU using the Conda environment `papagei_env`. The supplied report notebook records Python 3.10.21. Use that working environment when available.
 
 A starting installation for a new environment is:
 
@@ -53,16 +53,14 @@ python -m pip install "pyPPG==1.0.41" "matplotlib-inline==0.1.6" jupyterlab ipyk
 python -m ipykernel install --user --name papagei_env --display-name "Python (papagei_env)"
 ```
 
-This is a dependency-installation recipe, **not a version-locked recreation of the original environment**. Dependency versions can affect preprocessing and fitted results. Before archiving the final experiment, export the actual working environment:
+This is a dependency-installation recipe, not a version-locked recreation of the original environment. Dependency versions can affect preprocessing and fitted results. Before archiving the final experiment, export the actual working environment:
 
 ```bash
 conda env export --no-builds > environment.yml
 python -m pip freeze > requirements-reproduction-lock.txt
 ```
 
-These exports should be made from the environment that successfully runs the notebook, not from a newly installed environment that has not been checked. If an `environment.yml` from that run is included, it can be recreated with `conda env create -f environment.yml`.
-
-The report notebook uses saved MOMENT embeddings and does not need to download the MOMENT model. Repeating MOMENT feature extraction in the original development workflow additionally requires `momentfm` and the pretrained model `AutonLab/MOMENT-1-large`.
+These exports should be made from the environment that successfully runs the notebook. The report notebook uses saved MOMENT embeddings and does not need to download the MOMENT model. Repeating MOMENT feature extraction in the original development workflow additionally requires `momentfm` and the pretrained model `AutonLab/MOMENT-1-large`.
 
 
 ### Additional packages for Part B
@@ -211,13 +209,12 @@ The original development notebook documents additional feature-generation code a
 
 #### `evaluation_utils.evaluate_features()`
 
-Fits a `StandardScaler`–`Ridge` pipeline with scaling inside four-fold, unshuffled KFold CV. The search tests alpha `[0.1, 1, 10, 100]` and solvers `auto`, `cholesky`, `sparse_cg`, selecting by negative MSE. It returns MAE, predictions, selected parameters and a 95% MAE interval from 500 participant bootstrap samples, with seed 42 by default.
+Fits a `StandardScaler`–`Ridge` pipeline with scaling inside four-fold, unshuffled KFold CV. The search tests alpha `[0.1, 1, 10, 100]` and solvers `auto`, `cholesky`, `sparse_cg`, selecting by negative MAE. It returns MAE, predictions, selected parameters and a 95% MAE interval from 500 participant bootstrap samples, with seed 42 by default.
 
-The caller supplies already separated training and evaluation arrays. The helper **does not create participant splits or enforce shared-recording groups**. `evaluation_split` labels the supplied evaluation; it does not choose rows automatically. The grouped adapted experiments use their own notebook code.
 
 #### `results_utils.record_result()`
 
-Prints a regression summary and appends one row to a CSV, including run ID, model, target, procedure, sample counts, MAE, confidence interval and selected parameters. It checks the existing CSV schema before appending. Calling it repeatedly appends repeated rows; it does not replace an existing run. It does not fit models or save the complete predictions dictionary.
+Prints a regression summary and appends one row to a CSV, including run ID, model, target, procedure, sample counts, MAE, confidence interval and selected parameters. It checks the existing CSV schema before appending. Calling it repeatedly appends repeated rows; it does not replace an existing run. 
 
 
 ## 5. Part B: Improvements

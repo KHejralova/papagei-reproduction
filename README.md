@@ -1,13 +1,15 @@
 # Reproducing and improving PaPaGei on PPG-BP
 
-Group project for COMP41850 (AI for Time Series), University College Dublin, by **Karolina Hejralova** and **Petra Polakova**.
+Group project for COMP41850 (AI for Time Series) at University College Dublin, by **Karolina Hejralova** and **Petra Polakova**.
 
 The project has two parts:
 
-- **Part A: Reproduction.** Downstream evaluation of the pretrained PaPaGei-S and PaPaGei-P foundation models ([Pillai et al., ICLR 2025](https://arxiv.org/abs/2410.20542)) on the PPG-BP dataset, compared with the published results and with simple baselines, random forests and MOMENT.
-- **Part B: Improvements.** (1) Alternatives to zero padding of the short 2.1 s recordings, and (2) a stacking method that combines PaPaGei with inexpensive participant and signal features, compared with ROCKET-family time-series baselines under repeated cross-validation with corrected statistical tests.
+- **Part A: Reproduction.** We reproduced the PaPaGei-S and PaPaGei-P results on the PPG-BP dataset ([Pillai et al., ICLR 2025](https://arxiv.org/abs/2410.20542))
+  and compared them with the paper and with simple baselines, random forests and MOMENT.
+- **Part B: Improvements.** We tested other ways of filling PaPaGei's input instead of zero padding, and a stacking method that combines PaPaGei with simple features. We compared these with the ROCKET methods.
 
-[Section 3](#3-reproducing-each-result-in-the-report) lists, for every table and figure in the report, where it comes from and how to reproduce it.
+[Section 3](#3-reproducing-each-result-in-the-report) shows where every table and figure in the report comes from and
+how to reproduce it.
 
 ## Contents
 
@@ -65,16 +67,18 @@ These exports should be made from the environment that successfully runs the not
 
 ### Additional packages for Part B
 
-The improvement experiments use the same environment plus [`aeon`](https://www.aeon-toolkit.org/) for the ROCKET-family baselines:
+Part B also needs [`aeon`](https://www.aeon-toolkit.org/) for the ROCKET-family baselines:
 
 ```bash
-python -m pip install --dry-run aeon   # check first: it must not change numpy, scipy or pandas
+python -m pip install --dry-run aeon   # check it doesn't change numpy, scipy or pandas
 python -m pip install aeon
 ```
 
-If the dry run would change `numpy`, `scipy` or `pandas`, install `aeon` into a copy of the environment instead (`conda create -n papagei_aeon --clone papagei_env`). This matters because pyPPG's band-pass filter is numerically fragile with some SciPy builds (see [Section 7](#7-interpretation-and-reproducibility-limits)).
+If it would change them, install it in a copy of the environment instead
+(`conda create -n papagei_aeon --clone papagei_env`), because pyPPG's filter
+can break with some SciPy versions (see [Section 7](#7-interpretation-and-reproducibility-limits)).
 
-All Part B results were produced with **Python 3.10, SciPy 1.15.3, NumPy 2.2.6, pandas 2.3.3, scikit-learn 1.7.2, torch 2.14.1 and aeon 1.3.0 on macOS (Apple Silicon), CPU only**. The exact environment is exported in `environment-improvements.yml` (conda) and `requirements-improvements-lock.txt` (pip). Every Part B run checks the filter against a numerically stable version and stops if they disagree (`improvements/data.py`).
+All Part B results were made on macOS (Apple Silicon, CPU) with Python 3.10, SciPy 1.15.3 and aeon 1.3.0. The full environment is in `environment-improvements.yml` (conda) and `requirements-improvements-lock.txt`(pip). Every Part B run checks the filter against a numerically stable version and stops if they disagree (`improvements/data.py`).
 
 ## 2. Data, weights and saved inputs
 
@@ -221,9 +225,10 @@ Prints a regression summary and appends one row to a CSV, including run ID, mode
 
 Full details, options and design notes are in [`improvements/README.md`](improvements/README.md). In short:
 
-- **Experiment 1 (input representation).** PaPaGei expects 10 s inputs (1250 samples at 125 Hz), but PPG-BP recordings last 2.1 s, so the released pipeline zero-pads about 79% of each input. The experiment compares zero padding with the unpadded clip, tiling, tiling whole heartbeats, mirror padding and joining the three recordings, on the validation set only. No representation was consistently better, so Experiment 2 keeps zero padding.
-- **Experiment 2 (stacking with simple features).** Compares simple features (demographics, sVRI, SQI, peak-interval heart rate), PaPaGei-S/P alone, early fusion (embedding + demographics, as in the paper) and the proposed late fusion (an out-of-fold "PPG score" from the embedding, combined with the simple features), plus ROCKET, MiniROCKET, Hydra and QUANT on the preprocessed signal.
-- **Evaluation.** Uses the supplied 205-participant split with participant 24 removed (one of its recordings is identical to one of participant 23's). Methods are compared with 5-fold CV repeated 10 times on the 163 train + validation participants, with every fitted step inside the training folds. Differences are tested with the Nadeau–Bengio corrected t-test with Holm correction, and exploratory Friedman / CD diagrams / MCMs are produced. The test set (41 participants) is used once, after retraining on train + validation.
+- **Experiment 1:** PaPaGei expects 10 s inputs, but the recordings are only 2.1 s, so about 79% of each input is zero padding. We tried filling it with real signal instead (tiling, repeating heartbeats, mirroring, etc.) and compared on the validation set. Nothing was consistently better, so Experiment 2 keeps zero padding.
+- **Experiment 2:** We compared simple features, PaPaGei alone, the paper's way of combining PaPaGei with demographics, and our stacking method, plus four ROCKET-family methods from the course.
+- **Evaluation:** We used the supplied split without participant 24 (one of its recordings is the same as one of participant 23's). Methods were compared with 10 times repeated 5-fold CV on the 163 train + validation participants, using a corrected t-test with Holm correction. The 41 test participants were used only once at the end.
+
 
 ```bash
 # Experiment 1 (validation only)
@@ -240,6 +245,7 @@ python improvements/03_report_figures.py
 ```
 
 Outputs go to `results/improvements/` (report figures and table in `results/improvements/report/`, CD diagrams and MCMs in `results/improvements/figures/`). Files with the suffixes `_concat_vs_stacked` and `_padding` are earlier exploratory CV runs (made with `--out-tag`) and are not used in the report.
+
 
 ## 6. Results compared with the paper
 
@@ -283,6 +289,8 @@ MAE of the main methods in Experiment 2 (mmHg for BP, bpm for HR). CV is the mea
 
 The paper's values are on a different evaluation set (combined validation and test participants of the 205 split), so they are a reference point rather than a like-for-like comparison. In CV, stacking improved PaPaGei-S on all three targets (significantly only for HR after Holm correction), but PaPaGei added little beyond the simple features, and the ROCKET family reached the lowest BP errors. With 41 test participants the test confidence intervals are 6–7 mmHg wide and overlap, so CV is the primary evidence.
 
+The paper's numbers were measured on a different evaluation set, so they are only a reference point. In CV, stacking improved PaPaGei-S on all three targets (significant only for heart rate). However, PaPaGei added little on top of the simple features and ROCKET had the lowest blood pressure errors. The test set has only 41 participants, so its confidence intervals are wide and overlap, that's why we treat CV as the main result.
+
 ## 7. Interpretation and reproducibility limits
 
 - The released split omits 14 labelled participants. Their available recordings and labels do not establish the reason for exclusion.
@@ -293,9 +301,9 @@ The paper's values are on a different evaluation set (combined validation and te
 - The historical RF classification run was unseeded. The verification branch uses seed 42 and may not recover the same score.
 - Some historical regression bootstraps were not seeded. Exact intervals can change on recomputation.
 - This README and archive were checked against the submitted project snapshot. A fresh environment installation and full model-training workflow have not been validated end to end.
-- **pyPPG's band-pass filter is numerically fragile.** On Linux with SciPy 1.14–1.17 its output blew up and the pulse shape was lost, without any error, while SciPy 1.18 on Linux and SciPy 1.15.3 on macOS were fine. Part B checks the filter against a stable implementation on every run (`improvements/data.py`).
-- IPA (one of PaPaGei-S's three morphology indices) is computed but not used in Part B: on the 2.1 s recordings the released logic finds a full beat in only about a third of recordings and gives implausible values.
-- Part B results come from a single small dataset (163 participants for CV, 41 for test) and should be confirmed on larger cohorts.
+- **pyPPG's filter can silently break.** With SciPy 1.14–1.17 on Linux its output blew up without any error. Part B checks the filter on every run (`improvements/data.py`).
+- IPA is not used in Part B because on the short recordings it often can't be computed and the values aren't realistic.
+- All Part B results come from one small dataset and should be confirmed on larger ones.
 
 ## 8. Attribution and AI assistance
 
